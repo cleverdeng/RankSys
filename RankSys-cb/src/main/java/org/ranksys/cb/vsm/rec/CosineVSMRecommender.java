@@ -5,8 +5,9 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
-package org.ranksys.cb;
+package org.ranksys.cb.vsm.rec;
 
+import org.ranksys.cb.vsm.UserVSM;
 import es.uam.eps.ir.ranksys.fast.feature.FastFeatureData;
 import es.uam.eps.ir.ranksys.fast.index.FastItemIndex;
 import es.uam.eps.ir.ranksys.fast.index.FastUserIndex;
@@ -16,24 +17,37 @@ import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
 import static java.lang.Math.sqrt;
 
 /**
+ * VSM-based recommender whose scoring function is the cosine between user and
+ * item vectors.
  *
- * @author saul
+ * @author Saúl Vargas (saul.vargas@mendeley.com)
+ * @param <U> user type
+ * @param <F> feature type
+ * @param <I> item type
  */
 public class CosineVSMRecommender<U, I, F> extends FastRankingRecommender<U, I> {
 
-    private final FastFeatureData<I, F, Double> fd;
-    private final UserVSM<U, F> ufm;
+    private final FastFeatureData<I, F, Double> features;
+    private final UserVSM<U, F> uvsm;
     private final Int2DoubleMap itemNormMap;
 
-    public CosineVSMRecommender(FastUserIndex<U> users, FastItemIndex<I> items, FastFeatureData<I, F, Double> fd, UserVSM<U, F> ufm) {
+    /**
+     * Constructors
+     *
+     * @param users user index
+     * @param items item index
+     * @param features feature data
+     * @param uvsm user vector space model
+     */
+    public CosineVSMRecommender(FastUserIndex<U> users, FastItemIndex<I> items, FastFeatureData<I, F, Double> features, UserVSM<U, F> uvsm) {
         super(users, items);
-        this.fd = fd;
-        this.ufm = ufm;
+        this.features = features;
+        this.uvsm = uvsm;
 
         this.itemNormMap = new Int2DoubleOpenHashMap();
         itemNormMap.defaultReturnValue(0.0);
-        fd.getIidxWithFeatures().forEach(iidx -> {
-            double itemNorm = fd.getIidxFeatures(iidx)
+        features.getIidxWithFeatures().forEach(iidx -> {
+            double itemNorm = features.getIidxFeatures(iidx)
                     .mapToDouble(fv -> fv.v * fv.v)
                     .sum();
             itemNorm = sqrt(itemNorm);
@@ -54,9 +68,9 @@ public class CosineVSMRecommender<U, I, F> extends FastRankingRecommender<U, I> 
         featureScores.defaultReturnValue(0.0);
 
         double[] userNorm = {0.0};
-        ufm.getUidxFeatureModel(uidx).forEach(fv -> {
+        uvsm.getUidxFeatureModel(uidx).forEach(fv -> {
             userNorm[0] += fv.v * fv.v;
-            fd.getFidxItems(fv.idx).forEach(iv -> {
+            features.getFidxItems(fv.idx).forEach(iv -> {
                 featureScores.addTo(iv.idx, fv.v * iv.v);
             });
         });
