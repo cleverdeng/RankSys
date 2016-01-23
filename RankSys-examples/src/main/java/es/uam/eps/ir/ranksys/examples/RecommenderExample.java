@@ -11,10 +11,17 @@ package es.uam.eps.ir.ranksys.examples;
 import cc.mallet.topics.ParallelTopicModel;
 import es.uam.eps.ir.ranksys.core.format.RecommendationFormat;
 import es.uam.eps.ir.ranksys.core.format.SimpleRecommendationFormat;
+import static es.uam.eps.ir.ranksys.core.util.FastStringSplitter.split;
 import static es.uam.eps.ir.ranksys.core.util.parsing.DoubleParser.ddp;
+import static es.uam.eps.ir.ranksys.core.util.parsing.Parsers.dp;
 import static es.uam.eps.ir.ranksys.core.util.parsing.Parsers.lp;
+import static es.uam.eps.ir.ranksys.core.util.parsing.Parsers.sp;
+import es.uam.eps.ir.ranksys.fast.feature.FastFeatureData;
+import es.uam.eps.ir.ranksys.fast.feature.SimpleFastFeatureData;
+import es.uam.eps.ir.ranksys.fast.index.FastFeatureIndex;
 import es.uam.eps.ir.ranksys.fast.index.FastItemIndex;
 import es.uam.eps.ir.ranksys.fast.index.FastUserIndex;
+import es.uam.eps.ir.ranksys.fast.index.SimpleFastFeatureIndex;
 import es.uam.eps.ir.ranksys.fast.index.SimpleFastItemIndex;
 import es.uam.eps.ir.ranksys.fast.index.SimpleFastUserIndex;
 import es.uam.eps.ir.ranksys.fast.preference.FastPreferenceData;
@@ -43,6 +50,8 @@ import es.uam.eps.ir.ranksys.rec.runner.fast.FastFilterRecommenderRunner;
 import es.uam.eps.ir.ranksys.rec.runner.fast.FastFilters;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -50,7 +59,12 @@ import java.util.function.DoubleUnaryOperator;
 import java.util.function.Function;
 import java.util.function.IntPredicate;
 import java.util.function.Supplier;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
+import org.ranksys.cb.vsm.UserVSM;
+import org.ranksys.cb.vsm.WeightedSumUserVSM;
+import org.ranksys.cb.vsm.rec.CosineVSMRecommender;
 import org.ranksys.lda.LDAModelEstimator;
 import org.ranksys.lda.LDARecommender;
 
@@ -67,6 +81,7 @@ public class RecommenderExample {
         String itemPath = args[1];
         String trainDataPath = args[2];
         String testDataPath = args[3];
+        String featureDataPath = args[4];
 
         FastUserIndex<Long> userIndex = SimpleFastUserIndex.load(userPath, lp);
         FastItemIndex<Long> itemIndex = SimpleFastItemIndex.load(itemPath, lp);
@@ -165,6 +180,30 @@ public class RecommenderExample {
             }
 
             return new LDARecommender<>(userIndex, itemIndex, topicModel);
+        });
+
+        recMap.put("cb", () -> {
+            FastFeatureIndex<String> featureIndex = new SimpleFastFeatureIndex<String>() {
+                {
+                    try {
+                        Files.lines(Paths.get(featureDataPath))
+                                .map(line -> sp.parse(split(line, '\t')[1]))
+                                .sorted()
+                                .forEach(f -> add(f));
+                    } catch (IOException ex) {
+                        throw new UncheckedIOException(ex);
+                    }
+                }
+            };
+            FastFeatureData<Long, String, Double> featureData;
+            try {
+                featureData = SimpleFastFeatureData.load(featureDataPath, lp, sp, dp, itemIndex, featureIndex);
+            } catch (IOException ex) {
+                throw new UncheckedIOException(ex);
+            }
+            UserVSM<Long, String> uvsm = new WeightedSumUserVSM<>(trainData, featureData);
+
+            return new CosineVSMRecommender<>(userIndex, itemIndex, featureData, uvsm);
         });
 
         ////////////////////////////////
