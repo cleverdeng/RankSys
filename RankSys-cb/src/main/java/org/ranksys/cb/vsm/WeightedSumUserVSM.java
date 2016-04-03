@@ -7,11 +7,12 @@
  */
 package org.ranksys.cb.vsm;
 
-import es.uam.eps.ir.ranksys.fast.IdxDouble;
 import es.uam.eps.ir.ranksys.fast.preference.FastPreferenceData;
 import es.uam.eps.ir.ranksys.fast.feature.FastFeatureData;
 import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
 import java.util.stream.Stream;
+import org.ranksys.core.util.tuples.Tuple2id;
+import static org.ranksys.core.util.tuples.Tuples.tuple;
 
 /**
  * User vector space model in which the representation of each user in based
@@ -40,18 +41,18 @@ public class WeightedSumUserVSM<U, F> extends UserVSM<U, F> {
      * @return stream of feature-value pairs
      */
     @Override
-    public Stream<IdxDouble> getUidxFeatureModel(int uidx) {
+    public Stream<Tuple2id> getUidxFeatureModel(int uidx) {
         Int2DoubleOpenHashMap map = new Int2DoubleOpenHashMap();
         map.defaultReturnValue(0.0);
 
         preferences.getUidxPreferences(uidx).forEach(pref -> {
-            features.getIidxFeatures(pref.idx).forEach(fv -> {
-                map.addTo(fv.idx, pref.v * fv.v);
+            features.getIidxFeatures(pref.v1).forEach(fv -> {
+                map.addTo(fv.v1, pref.v2 * fv.v2);
             });
         });
 
         return map.int2DoubleEntrySet().stream()
-                .map(e -> new IdxDouble(e.getIntKey(), e.getDoubleValue()));
+                .map(e -> tuple(e.getIntKey(), e.getDoubleValue()));
     }
 
 }

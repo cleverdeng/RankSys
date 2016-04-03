@@ -48,7 +48,7 @@ public class CosineVSMRecommender<U, I, F> extends FastRankingRecommender<U, I> 
         itemNormMap.defaultReturnValue(0.0);
         features.getIidxWithFeatures().forEach(iidx -> {
             double itemNorm = features.getIidxFeatures(iidx)
-                    .mapToDouble(fv -> fv.v * fv.v)
+                    .mapToDouble(fv -> fv.v2 * fv.v2)
                     .sum();
             itemNorm = sqrt(itemNorm);
             itemNormMap.put(iidx, itemNorm);
@@ -69,9 +69,9 @@ public class CosineVSMRecommender<U, I, F> extends FastRankingRecommender<U, I> 
 
         double[] userNorm = {0.0};
         uvsm.getUidxFeatureModel(uidx).forEach(fv -> {
-            userNorm[0] += fv.v * fv.v;
-            features.getFidxItems(fv.idx).forEach(iv -> {
-                featureScores.addTo(iv.idx, fv.v * iv.v);
+            userNorm[0] += fv.v2 * fv.v2;
+            features.getFidxItems(fv.v1).forEach(iv -> {
+                featureScores.addTo(iv.v1, fv.v2 * iv.v2);
             });
         });
         userNorm[0] = sqrt(userNorm[0]);

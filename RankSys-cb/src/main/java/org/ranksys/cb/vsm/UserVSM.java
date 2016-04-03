@@ -7,11 +7,11 @@
  */
 package org.ranksys.cb.vsm;
 
-import es.uam.eps.ir.ranksys.core.IdDouble;
-import es.uam.eps.ir.ranksys.fast.IdxDouble;
 import es.uam.eps.ir.ranksys.fast.feature.FastFeatureData;
 import es.uam.eps.ir.ranksys.fast.preference.FastPreferenceData;
 import java.util.stream.Stream;
+import org.ranksys.core.util.tuples.Tuple2id;
+import org.ranksys.core.util.tuples.Tuple2od;
 
 /**
  * User vector space model.
@@ -49,9 +49,9 @@ public abstract class UserVSM<U, F> {
      * @param u user
      * @return stream of feature-value pairs
      */
-    public Stream<IdDouble<F>> getUserFeatureModel(final U u) {
+    public Stream<Tuple2od<F>> getUserFeatureModel(final U u) {
         return getUidxFeatureModel(preferences.user2uidx(u))
-                .map(fv -> new IdDouble<F>(features.fidx2feature(fv.idx), fv.v));
+                .map(features::fidx2feature);
     }
 
     /**
@@ -60,5 +60,5 @@ public abstract class UserVSM<U, F> {
      * @param uidx user
      * @return stream of feature-value pairs
      */
-    public abstract Stream<IdxDouble> getUidxFeatureModel(int uidx);
+    public abstract Stream<Tuple2id> getUidxFeatureModel(int uidx);
 }
